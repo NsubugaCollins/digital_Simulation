@@ -1,0 +1,7 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "python.defaultInterpreterPath": "${workspaceFolder}/simulation/venv/bin/python",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/simulation"
+    ]
+}
