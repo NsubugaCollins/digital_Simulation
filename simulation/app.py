@@ -28,16 +28,20 @@ model_package = None
 
 def load_model():
     global model_package
+    if model_package is not None:
+        return model_package
     if os.path.exists(MODEL_PATH):
         try:
-            model_package = joblib.load(MODEL_PATH)
-            logger.info("Successfully loaded predictive maintenance model package.")
+            # Use mmap_mode='r' to prevent loading entire model into RAM at once
+            model_package = joblib.load(MODEL_PATH, mmap_mode='r')
+            logger.info("Successfully loaded predictive maintenance model package (lazy).")
         except Exception as e:
             logger.error("Failed to load predictive maintenance model: %s", e)
             model_package = None
     else:
         logger.warning("Predictive maintenance model file not found at %s. Please run training first.", MODEL_PATH)
         model_package = None
+    return model_package
 
 CMAPSS_MODEL_PATH = "simulation/cmapss_models.joblib"
 if not os.path.exists(CMAPSS_MODEL_PATH):
@@ -47,16 +51,20 @@ cmapss_model_package = None
 
 def load_cmapss_model():
     global cmapss_model_package
+    if cmapss_model_package is not None:
+        return cmapss_model_package
     if os.path.exists(CMAPSS_MODEL_PATH):
         try:
-            cmapss_model_package = joblib.load(CMAPSS_MODEL_PATH)
-            logger.info("Successfully loaded C-MAPSS RUL model package.")
+            # Use mmap_mode='r' to prevent loading entire model into RAM at once
+            cmapss_model_package = joblib.load(CMAPSS_MODEL_PATH, mmap_mode='r')
+            logger.info("Successfully loaded C-MAPSS RUL model package (lazy).")
         except Exception as e:
             logger.error("Failed to load C-MAPSS RUL model: %s", e)
             cmapss_model_package = None
     else:
         logger.warning("C-MAPSS RUL model file not found at %s. Please run C-MAPSS training first.", CMAPSS_MODEL_PATH)
         cmapss_model_package = None
+    return cmapss_model_package
 
 SECOM_MODEL_PATH = "simulation/secom_model.joblib"
 if not os.path.exists(SECOM_MODEL_PATH):
@@ -66,26 +74,28 @@ secom_model_package = None
 
 def load_secom_model():
     global secom_model_package
+    if secom_model_package is not None:
+        return secom_model_package
     if os.path.exists(SECOM_MODEL_PATH):
         try:
-            secom_model_package = joblib.load(SECOM_MODEL_PATH)
-            logger.info("Successfully loaded SECOM defect prediction model package.")
+            # Use mmap_mode='r' to prevent loading entire model into RAM at once
+            secom_model_package = joblib.load(SECOM_MODEL_PATH, mmap_mode='r')
+            logger.info("Successfully loaded SECOM defect prediction model package (lazy).")
         except Exception as e:
             logger.error("Failed to load SECOM model: %s", e)
             secom_model_package = None
     else:
         logger.warning("SECOM model file not found at %s. Please run SECOM training first.", SECOM_MODEL_PATH)
         secom_model_package = None
+    return secom_model_package
 
 # ---------------------------------------------------------------------------
 # Lifespan and Security Config
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load ML models
-    load_model()
-    load_cmapss_model()
-    load_secom_model()
+    # Do not pre-load all models on startup to save memory on Render Free tier.
+    # They will be loaded lazily on demand with mmap_mode='r'.
     yield
 
 API_KEY_NAME = "X-API-Key"
@@ -455,6 +465,8 @@ def run_training_secom():
 def predict_failure(request: PredictRequest):
     global model_package
     if model_package is None:
+        load_model()
+    if model_package is None:
         raise HTTPException(
             status_code=503,
             detail="Predictive model is not loaded. Please train the model first by POSTing to /train."
@@ -521,6 +533,8 @@ def train_model(background_tasks: BackgroundTasks):
 def get_model_metrics():
     global model_package
     if model_package is None:
+        load_model()
+    if model_package is None:
         return {
             "status": "NOT_LOADED",
             "message": "No model is currently loaded. Please train the model by POSTing to /train."
@@ -535,6 +549,8 @@ def get_model_metrics():
 @app.post("/predict/rul", response_model=RulPredictResponse, tags=["Predictive Maintenance"], dependencies=[Depends(verify_api_key)])
 def predict_rul(request: RulPredictRequest):
     global cmapss_model_package
+    if cmapss_model_package is None:
+        load_cmapss_model()
     if cmapss_model_package is None:
         raise HTTPException(
             status_code=503,
@@ -603,6 +619,8 @@ def train_rul(background_tasks: BackgroundTasks):
 def get_rul_model_metrics():
     global cmapss_model_package
     if cmapss_model_package is None:
+        load_cmapss_model()
+    if cmapss_model_package is None:
         return {
             "status": "NOT_LOADED",
             "message": "No C-MAPSS model package is currently loaded. Please train the model by POSTing to /train/rul."
@@ -637,6 +655,8 @@ def predict_secom(
     flagged at this level has ≥50% probability of being a true defect.
     """
     global secom_model_package
+    if secom_model_package is None:
+        load_secom_model()
     if secom_model_package is None:
         raise HTTPException(
             status_code=503,
@@ -703,6 +723,8 @@ def train_secom(background_tasks: BackgroundTasks):
 def get_secom_metrics():
     """Return metrics and metadata for the currently loaded SECOM defect model."""
     global secom_model_package
+    if secom_model_package is None:
+        load_secom_model()
     if secom_model_package is None:
         return {
             "status": "NOT_LOADED",
