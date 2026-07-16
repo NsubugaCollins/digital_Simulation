@@ -10,6 +10,8 @@ RUN mvn package -DskipTests -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+RUN apk add --no-cache curl
+
 # Non-root user for security
 RUN addgroup -S frex && adduser -S frex -G frex
 USER frex

@@ -3,5 +3,6 @@
     "python.defaultInterpreterPath": "${workspaceFolder}/simulation/venv/bin/python",
     "python.analysis.extraPaths": [
         "${workspaceFolder}/simulation"
-    ]
+    ],
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
