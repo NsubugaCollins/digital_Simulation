@@ -17,7 +17,9 @@ services:
           name: frex-postgres
           property: port
       - key: SPRING_DATASOURCE_DBNAME
-        value: frexsos
+        fromDatabase:
+          name: frex-postgres
+          property: database
       - key: SPRING_DATASOURCE_USERNAME
         fromDatabase:
           name: frex-postgres
