@@ -1,0 +1,37 @@
+# Environment files
+.env
+.env.*
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Java / Maven
+backend/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+
+# ML model artifacts and data
+*.joblib
+*.pkl
+*.h5
+*.model
+*.bin
+*.csv
+*.tsv
+*.parquet
+*.feather
+
+data/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
