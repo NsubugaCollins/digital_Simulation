@@ -1,7 +1,7 @@
 services:
   - type: web
     name: frex-backend
-    env: docker
+    runtime: docker
     dockerfilePath: backend/Dockerfile
     dockerContext: backend
     plan: free
@@ -39,7 +39,7 @@ services:
 
   - type: web
     name: frex-simulation
-    env: docker
+    runtime: docker
     dockerfilePath: simulation/Dockerfile
     dockerContext: simulation
     plan: free
@@ -53,7 +53,7 @@ services:
 
   - type: web
     name: frex-frontend
-    env: docker
+    runtime: docker
     dockerfilePath: frontend/Dockerfile
     dockerContext: frontend
     plan: free
