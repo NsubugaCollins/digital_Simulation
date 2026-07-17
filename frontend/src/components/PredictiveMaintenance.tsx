@@ -52,18 +52,129 @@ const statusBadge = (s: ModelStatus) => (
   </span>
 );
 
+const METRIC_LABEL_MAP: Record<string, string> = {
+  // Common metrics
+  accuracy: 'Accuracy',
+  precision: 'Precision',
+  recall: 'Recall',
+  f1_score: 'F1 Score',
+  roc_auc: 'ROC AUC',
+  threshold: 'Balanced Threshold',
+  
+  // SECOM / Precision mode metrics
+  precision_mode_threshold: 'Prec. Mode Threshold',
+  precision_mode_precision: 'Prec. Mode Precision',
+  precision_mode_recall: 'Prec. Mode Recall',
+  precision_mode_f1: 'Prec. Mode F1',
+  
+  // Dataset / count metrics
+  n_samples: 'Total Samples',
+  n_features_kept: 'Features Kept',
+  n_fail: 'Fail Samples',
+  n_pass: 'Pass Samples',
+  positive_count_test: 'Positive Test Count',
+  total_count_test: 'Total Test Count',
+  
+  // RUL / C-MAPSS metrics
+  rmse: 'RMSE',
+  mae: 'MAE',
+  r2_score: 'R2 Score',
+  engines_count: 'Engines Count'
+};
+
 function MetricCard({ label, value }: { label: string; value: string | number }) {
+  const cleanLabel = METRIC_LABEL_MAP[label] || label.replace(/_/g, ' ');
   return (
     <div style={{
       background: 'rgba(255,255,255,0.04)',
       border: '1px solid rgba(255,255,255,0.08)',
       borderRadius: 10,
-      padding: '12px 18px',
-      minWidth: 130,
-      flex: '1 1 130px',
+      padding: '16px 20px',
+      minWidth: '180px',
+      flex: '1 1 180px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      boxSizing: 'border-box',
+      wordBreak: 'break-word',
+      overflowWrap: 'anywhere',
     }}>
-      <div style={{ color: '#94a3b8', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
-      <div style={{ color: '#e2e8f0', fontSize: 22, fontWeight: 700, marginTop: 4 }}>{value}</div>
+      <div style={{ 
+        color: '#94a3b8', 
+        fontSize: 10, 
+        textTransform: 'uppercase', 
+        letterSpacing: 1,
+        lineHeight: '1.4',
+        marginBottom: 8
+      }}>
+        {cleanLabel}
+      </div>
+      <div style={{ color: '#e2e8f0', fontSize: 20, fontWeight: 700, marginTop: 'auto' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function renderMetricsContent(metricsData: any) {
+  if (!metricsData) return null;
+  
+  const hasObjects = Object.values(metricsData).some(v => typeof v === 'object' && v !== null);
+  
+  if (!hasObjects) {
+    return (
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+        gap: 12,
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {Object.entries(metricsData).map(([k, v]) =>
+          typeof v === 'number' ? (
+            <MetricCard key={k} label={k} value={Number(v) % 1 === 0 ? v : Number(v).toFixed(4)} />
+          ) : typeof v === 'string' ? (
+            <MetricCard key={k} label={k} value={v} />
+          ) : null
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+      {Object.entries(metricsData).map(([groupKey, groupVal]: [string, any]) => {
+        if (typeof groupVal !== 'object' || groupVal === null) return null;
+        return (
+          <div key={groupKey} style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            borderRadius: 12,
+            padding: 16,
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
+            <h4 style={{ margin: '0 0 12px', color: '#c7d2fe', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+              {groupKey.replace(/_/g, ' ')}
+            </h4>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: 12,
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              {Object.entries(groupVal).map(([k, v]) =>
+                typeof v === 'number' ? (
+                  <MetricCard key={k} label={k} value={Number(v) % 1 === 0 ? v : Number(v).toFixed(4)} />
+                ) : typeof v === 'string' ? (
+                  <MetricCard key={k} label={k} value={v} />
+                ) : null
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -141,11 +252,7 @@ function ModelPanel({
         {trainingState.status === 'SUCCESS' && trainingState.metrics && (
           <div style={{ marginTop: 16 }}>
             <div style={{ color: '#86efac', fontSize: 12, marginBottom: 10 }}>✓ Last training succeeded</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {Object.entries(trainingState.metrics).map(([k, v]) => (
-                typeof v === 'number' ? <MetricCard key={k} label={k} value={Number(v).toFixed(4)} /> : null
-              ))}
-            </div>
+            {renderMetricsContent(trainingState.metrics)}
           </div>
         )}
       </SectionCard>
@@ -168,11 +275,7 @@ function ModelPanel({
                 Feature columns: <strong style={{ color: '#c7d2fe' }}>{metrics.features.length}</strong>
               </div>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {metrics.metrics && Object.entries(metrics.metrics).map(([k, v]) =>
-                typeof v === 'number' ? <MetricCard key={k} label={k} value={Number(v).toFixed(4)} /> : null
-              )}
-            </div>
+            {metrics.metrics && renderMetricsContent(metrics.metrics)}
           </div>
         )}
       </SectionCard>
