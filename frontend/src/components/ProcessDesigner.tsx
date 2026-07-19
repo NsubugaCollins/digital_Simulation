@@ -19,23 +19,28 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
   const [stepDuration, setStepDuration] = useState(5.0);
   const [resType, setResType] = useState<'MACHINE' | 'ROBOT'>('MACHINE');
   const [resId, setResId] = useState<number>(-1);
+  const [error, setError] = useState<string | null>(null);
+  const [stepError, setStepError] = useState<string | null>(null);
 
   const fetchProcesses = async () => {
     if (!selectedFactory) return;
     try {
+      setError(null);
       const data = await api.getProcesses(selectedFactory.id);
       setProcesses(data);
       if (data.length > 0 && !selectedProcess) {
         setSelectedProcess(data[0]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'Failed to fetch processes.');
     }
   };
 
   const fetchResources = async () => {
     if (!selectedFactory) return;
     try {
+      setStepError(null);
       const mData = await api.getMachines(selectedFactory.id);
       const rData = await api.getRobots(selectedFactory.id);
       setMachines(mData);
@@ -49,8 +54,9 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
       } else {
         setResId(-1);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setStepError(err.message || 'Failed to fetch factory resources.');
     }
   };
 
@@ -74,25 +80,29 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
     e.preventDefault();
     if (!selectedFactory || !pName.trim()) return;
     try {
+      setError(null);
       const newP = await api.createProcess(selectedFactory.id, { name: pName });
       setPName('');
       fetchProcesses();
       setSelectedProcess(newP);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'Failed to create process line.');
     }
   };
 
   const handleDeleteProcess = async (id: number) => {
     if (!confirm('Are you sure you want to delete this process?')) return;
     try {
+      setError(null);
       await api.deleteProcess(id);
       if (selectedProcess?.id === id) {
         setSelectedProcess(null);
       }
       fetchProcesses();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'Failed to delete process line.');
     }
   };
 
@@ -103,6 +113,7 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
     const nextOrder = (selectedProcess.steps?.length || 0) + 1;
 
     try {
+      setStepError(null);
       await api.addProcessStep(selectedProcess.id, {
         stepOrder: nextOrder,
         name: stepName,
@@ -118,21 +129,24 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
       setProcesses(updatedProcesses);
       const found = updatedProcesses.find((p: any) => p.id === selectedProcess.id);
       if (found) setSelectedProcess(found);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setStepError(err.message || 'Failed to add sequence step.');
     }
   };
 
   const handleDeleteStep = async (stepId: number) => {
     try {
+      setStepError(null);
       await api.deleteProcessStep(stepId);
       // Reload
       const updatedProcesses = await api.getProcesses(selectedFactory.id);
       setProcesses(updatedProcesses);
       const found = updatedProcesses.find((p: any) => p.id === selectedProcess.id);
       if (found) setSelectedProcess(found);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setStepError(err.message || 'Failed to delete sequence step.');
     }
   };
 
@@ -157,6 +171,11 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
 
         {/* Create Process Form */}
         <form onSubmit={handleCreateProcess} className="space-y-2 border-b border-slate-800 pb-4">
+          {error && (
+            <div className="mb-2 bg-red-950/40 border border-red-800/60 text-red-300 rounded-lg p-2 text-[10px]">
+              {error}
+            </div>
+          )}
           <input
             type="text"
             placeholder="Process Name (e.g. Phone Assembly)"
@@ -167,7 +186,8 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
           />
           <button
             type="submit"
-            className="w-full bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs py-2 rounded-lg transition cursor-pointer flex justify-center items-center gap-1"
+            disabled={!pName.trim()}
+            className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-2 rounded-lg transition cursor-pointer flex justify-center items-center gap-1"
           >
             <Plus className="h-4 w-4" /> Add Process Line
           </button>
@@ -291,6 +311,11 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
                 </div>
               ) : (
                 <form onSubmit={handleAddStep} className="space-y-4">
+                  {stepError && (
+                    <div className="bg-red-950/40 border border-red-800/60 text-red-300 rounded-xl p-3 text-xs">
+                      {stepError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-semibold text-slate-400 block mb-1">Step Operation Name</label>
@@ -376,8 +401,8 @@ export const ProcessDesigner: React.FC<ProcessDesignerProps> = ({ selectedFactor
 
                   <button
                     type="submit"
-                    disabled={resId === -1}
-                    className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold text-xs py-2.5 rounded-lg transition cursor-pointer flex justify-center items-center gap-1"
+                    disabled={!stepName.trim() || resId === -1}
+                    className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs py-2.5 rounded-lg transition cursor-pointer flex justify-center items-center gap-1"
                   >
                     <Plus className="h-4 w-4" /> Add Sequence Step
                   </button>
