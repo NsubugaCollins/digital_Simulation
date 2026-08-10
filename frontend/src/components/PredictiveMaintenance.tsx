@@ -510,9 +510,9 @@ export default function PredictiveMaintenance({ onDiagnose }: { onDiagnose?: (mo
   const [activeTab, setActiveTab] = useState<ActiveTab>('status');
   const [trainingStatus, setTrainingStatus] = useState<TrainingStatusResponse | null>(null);
   const [metrics, setMetrics] = useState<{
-    classification: ModelMetricsResponse | null;
-    rul: ModelMetricsResponse | null;
-    secom: ModelMetricsResponse | null;
+    classification: MetricsData | null;
+    rul: MetricsData | null;
+    secom: MetricsData | null;
   }>({ classification: null, rul: null, secom: null });
   const [metricsLoading, setMetricsLoading] = useState(false);
 
