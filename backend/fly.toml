@@ -1,0 +1,23 @@
+# fly.toml app configuration file for frex-backend
+app = "frex-backend"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8081"
+  CORS_ALLOWED_ORIGINS = "https://digital-simulation.pages.dev,http://localhost:5173"
+  SPRING_JPA_HIBERNATE_DDL_AUTO = "update"
+
+[http_service]
+  internal_port = 8081
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
