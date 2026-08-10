@@ -4,18 +4,20 @@ import { FactoryDesigner } from './components/FactoryDesigner';
 import { ProcessDesigner } from './components/ProcessDesigner';
 import { SimulationRunner } from './components/SimulationRunner';
 import PredictiveMaintenance from './components/PredictiveMaintenance';
+import { AiAssistant } from './components/AiAssistant';
 import {
   Activity, Factory, Layers, FlaskConical, LogOut,
-  User, ChevronRight, Menu, X, BrainCircuit,
+  User, ChevronRight, Menu, X, BrainCircuit, Bot,
 } from 'lucide-react';
 
-type Tab = 'factory' | 'process' | 'simulation' | 'predictive';
+type Tab = 'factory' | 'process' | 'simulation' | 'predictive' | 'rag_copilot';
 
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ElementType; accent: string }[] = [
   { id: 'factory',    label: 'Factory Designer',        icon: Factory,       accent: 'text-cyan-400' },
   { id: 'process',    label: 'Process Designer',        icon: Layers,        accent: 'text-violet-400' },
   { id: 'simulation', label: 'Simulation & AI',         icon: FlaskConical,  accent: 'text-emerald-400' },
   { id: 'predictive', label: 'Predictive Maintenance',  icon: BrainCircuit,  accent: 'text-amber-400' },
+  { id: 'rag_copilot',label: 'AI Factory Copilot (RAG)', icon: Bot,           accent: 'text-blue-400' },
 ];
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('factory');
   const [selectedFactory, setSelectedFactory] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [ragDiagnosis, setRagDiagnosis] = useState<{ modelType: string; predictionData: any } | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('frex_user');
@@ -164,7 +167,20 @@ export default function App() {
             <SimulationRunner selectedFactory={selectedFactory} />
           )}
           {activeTab === 'predictive' && (
-            <PredictiveMaintenance />
+            <PredictiveMaintenance
+              onDiagnose={(modelType, predictionData) => {
+                setRagDiagnosis({ modelType, predictionData });
+                setActiveTab('rag_copilot');
+              }}
+            />
+          )}
+          {activeTab === 'rag_copilot' && (
+            <div className="p-6 h-full flex flex-col">
+              <AiAssistant
+                initialDiagnosis={ragDiagnosis}
+                onClose={() => setRagDiagnosis(null)}
+              />
+            </div>
           )}
         </main>
       </div>

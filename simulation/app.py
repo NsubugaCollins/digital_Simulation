@@ -10,6 +10,7 @@ import uvicorn
 import logging
 import os
 import joblib
+from rag_engine import rag_engine
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -483,14 +484,30 @@ def predict_failure(request: PredictRequest):
     type_val = type_map[prod_type]
     
     import pandas as pd
-    features = pd.DataFrame([{
+    import numpy as np
+    
+    power_w = request.torque * (request.rotationalSpeed * 2 * np.pi / 60)
+    temp_diff = request.processTemperature - request.airTemperature
+    strain_index = request.toolWear * request.torque
+    
+    feature_dict = {
         "Type": type_val,
         "Air temperature [K]": request.airTemperature,
         "Process temperature [K]": request.processTemperature,
         "Rotational speed [rpm]": request.rotationalSpeed,
         "Torque [Nm]": request.torque,
-        "Tool wear [min]": request.toolWear
-    }])
+        "Tool wear [min]": request.toolWear,
+        "Power_W": power_w,
+        "Temp_Diff": temp_diff,
+        "Strain_Index": strain_index,
+        "Vibration_RMS": 0.35,
+        "Kurtosis": 3.0,
+        "Crest_Factor": 1.6,
+        "Peak_Accel": 0.8
+    }
+    
+    expected_cols = model_package.get("features", list(feature_dict.keys()))
+    features = pd.DataFrame([[feature_dict.get(c, 0.0) for c in expected_cols]], columns=expected_cols)
     
     models = model_package["models"]
     
@@ -568,7 +585,7 @@ def predict_rul(request: RulPredictRequest):
     model = models[sub]
     
     import pandas as pd
-    features = pd.DataFrame([{
+    base_dict = {
         "setting1": request.setting1,
         "setting2": request.setting2,
         "setting3": request.setting3,
@@ -593,7 +610,25 @@ def predict_rul(request: RulPredictRequest):
         "sensor19": request.sensor19,
         "sensor20": request.sensor20,
         "sensor21": request.sensor21,
-    }])
+    }
+    
+    # Auto-fill rolling mean, rolling std, and delta features if expected by trained model
+    expected_cols = cmapss_model_package.get("features", list(base_dict.keys()))
+    row_data = {}
+    for c in expected_cols:
+        if c in base_dict:
+            row_data[c] = base_dict[c]
+        elif c.endswith("_roll_mean"):
+            base_col = c.replace("_roll_mean", "")
+            row_data[c] = base_dict.get(base_col, 0.0)
+        elif c.endswith("_roll_std"):
+            row_data[c] = 0.0
+        elif c.endswith("_delta5"):
+            row_data[c] = 0.0
+        else:
+            row_data[c] = 0.0
+            
+    features = pd.DataFrame([row_data], columns=expected_cols)
     
     # Predict RUL
     predicted_rul = float(model.predict(features)[0])
@@ -742,6 +777,40 @@ def get_secom_metrics():
 def get_training_status():
     """Return status of background model training tasks."""
     return training_status
+
+
+# ---------------------------------------------------------------------------
+# RAG (Retrieval-Augmented Generation) Endpoints
+# ---------------------------------------------------------------------------
+class RagQueryRequest(BaseModel):
+    query: str = Field(..., description="Natural language query or question about factory equipment/processes")
+    machineId: Optional[str] = Field(None, description="Optional machine identifier context")
+    enableWebSearch: bool = Field(True, description="Enable live web search fallback")
+
+class RagDiagnoseRequest(BaseModel):
+    modelType: str = Field(..., description="Type of model generating alert (e.g. C-MAPSS, SECOM, Predictive Maintenance)")
+    predictionData: Dict[str, Any] = Field(..., description="ML Model prediction metrics payload")
+    enableWebSearch: bool = Field(True, description="Enable live web search fallback")
+
+@app.post("/rag/query", tags=["RAG AI Copilot"], dependencies=[Depends(verify_api_key)])
+def rag_query(request: RagQueryRequest):
+    """Query the factory knowledge base using Hybrid RAG (Local + Live Web Search)."""
+    logger.info("Received RAG query for machine %s: %s", request.machineId, request.query)
+    result = rag_engine.query(request.query, request.machineId, enable_web_search=request.enableWebSearch)
+    return result
+
+@app.post("/rag/diagnose", tags=["RAG AI Copilot"], dependencies=[Depends(verify_api_key)])
+def rag_diagnose(request: RagDiagnoseRequest):
+    """Perform Hybrid RAG failure diagnosis on ML model predictions."""
+    logger.info("Received RAG diagnosis request for model %s", request.modelType)
+    result = rag_engine.diagnose_failure(request.modelType, request.predictionData, enable_web_search=request.enableWebSearch)
+    return result
+
+@app.post("/rag/ingest", tags=["RAG AI Copilot"], dependencies=[Depends(verify_api_key)])
+def rag_ingest():
+    """Refresh the RAG vector index from markdown SOP and manual documents."""
+    rag_engine._ingest_seed_knowledge()
+    return {"status": "SUCCESS", "message": "RAG Knowledge Base re-indexed successfully."}
 
 
 # ---------------------------------------------------------------------------

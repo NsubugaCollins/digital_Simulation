@@ -345,4 +345,34 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch engineering report');
     return res.json();
   },
+
+  // RAG AI Copilot
+  queryRag: async (query: string, machineId?: string, enableWebSearch: boolean = true) => {
+    const res = await fetch(`${API_BASE_URL}/rag/query`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ query, machineId, enableWebSearch }),
+    });
+    if (!res.ok) throw new Error('Failed to query RAG AI Assistant');
+    return res.json();
+  },
+
+  diagnoseRag: async (modelType: string, predictionData: any, enableWebSearch: boolean = true) => {
+    const res = await fetch(`${API_BASE_URL}/rag/diagnose`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ modelType, predictionData, enableWebSearch }),
+    });
+    if (!res.ok) throw new Error('Failed to perform RAG diagnosis');
+    return res.json();
+  },
+
+  ingestRagKnowledge: async () => {
+    const res = await fetch(`${API_BASE_URL}/rag/ingest`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to re-index RAG knowledge base');
+    return res.json();
+  },
 };

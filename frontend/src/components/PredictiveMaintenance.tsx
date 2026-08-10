@@ -290,7 +290,7 @@ function ModelPanel({
 
 // ─── Classification prediction form ──────────────────────────────────────────
 
-function ClassificationForm() {
+function ClassificationForm({ onDiagnose }: { onDiagnose?: (modelType: string, data: any) => void }) {
   const [form, setForm] = useState({
     type: 'M', airTemperature: 298.1, processTemperature: 308.6,
     rotationalSpeed: 1551, torque: 42.8, toolWear: 0,
@@ -343,11 +343,31 @@ function ClassificationForm() {
             <MetricCard label="Machine Failure" value={result.machineFailurePredicted ? '⚠ YES' : '✓ NO'} />
             <MetricCard label="Failure Probability" value={(result.machineFailureProbability * 100).toFixed(1) + '%'} />
           </div>
-          <div style={{ color:'#94a3b8', fontSize:12 }}>Failure modes: {
+          <div style={{ color:'#94a3b8', fontSize:12, marginBottom:12 }}>Failure modes: {
             Object.entries(result.failureModesPredicted || {}).map(([k, v]) =>
               <span key={k} style={{ marginRight:8, color: v ? '#f87171' : '#86efac' }}>{k}: {v ? '⚠' : '✓'}</span>
             )
           }</div>
+          {onDiagnose && (
+            <button
+              onClick={() => onDiagnose('AI4I 2020 Predictive Maintenance', result)}
+              style={{
+                background: 'linear-gradient(135deg,#0284c7,#2563eb)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '6px 14px',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              🤖 Diagnose Failure with RAG AI
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -356,7 +376,7 @@ function ClassificationForm() {
 
 // ─── RUL prediction form ──────────────────────────────────────────────────────
 
-function RulForm() {
+function RulForm({ onDiagnose }: { onDiagnose?: (modelType: string, data: any) => void }) {
   const subsets = ['FD001', 'FD002', 'FD003', 'FD004'];
   const [subset, setSubset] = useState('FD001');
   const defaultSensors = {
@@ -409,6 +429,27 @@ function RulForm() {
       {result && (
         <div style={{ marginTop:16, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:10, padding:16 }}>
           <MetricCard label={`Predicted RUL (${result.subset})`} value={`${result.predictedRUL} cycles`} />
+          {onDiagnose && (
+            <button
+              onClick={() => onDiagnose('C-MAPSS Remaining Useful Life', result)}
+              style={{
+                marginTop: 12,
+                background: 'linear-gradient(135deg,#0284c7,#2563eb)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '6px 14px',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              🤖 Diagnose RUL with RAG AI
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -465,21 +506,22 @@ function StatusOverview({ status }: { status: TrainingStatusResponse | null }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function PredictiveMaintenance() {
+export default function PredictiveMaintenance({ onDiagnose }: { onDiagnose?: (modelType: string, data: any) => void }) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('status');
   const [trainingStatus, setTrainingStatus] = useState<TrainingStatusResponse | null>(null);
   const [metrics, setMetrics] = useState<{
-    classification: MetricsData | null;
-    rul: MetricsData | null;
-    secom: MetricsData | null;
+    classification: ModelMetricsResponse | null;
+    rul: ModelMetricsResponse | null;
+    secom: ModelMetricsResponse | null;
   }>({ classification: null, rul: null, secom: null });
   const [metricsLoading, setMetricsLoading] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     try {
-      const s = await api.getTrainingStatus();
-      setTrainingStatus(s);
-    } catch { /* engine may not be running */ }
+      setTrainingStatus(await api.getTrainingStatus());
+    } catch {
+      // API unavailable or unauthenticated
+    }
   }, []);
 
   const refreshMetrics = useCallback(async () => {
@@ -581,7 +623,7 @@ export default function PredictiveMaintenance() {
           onTrain={() => train('classification')}
           metrics={metrics.classification}
           metricsLoading={metricsLoading}
-          predictionForm={<ClassificationForm />}
+          predictionForm={<ClassificationForm onDiagnose={onDiagnose} />}
         />
       )}
 
@@ -594,7 +636,7 @@ export default function PredictiveMaintenance() {
           onTrain={() => train('rul')}
           metrics={metrics.rul}
           metricsLoading={metricsLoading}
-          predictionForm={<RulForm />}
+          predictionForm={<RulForm onDiagnose={onDiagnose} />}
         />
       )}
 

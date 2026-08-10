@@ -107,15 +107,26 @@ def train_secom_model(
     # 8. Standard scaling
     print("Standard-scaling features ...")
     scaler = StandardScaler()
-    X_train = scaler.fit_transform(X_train_imp)
+    X_train_scaled = scaler.fit_transform(X_train_imp)
     X_test  = scaler.transform(X_test_imp)
 
-    # 9. Train Calibrated Random Forest classifier
-    print("Training calibrated RandomForest classifier ...")
+    # 8b. Apply SMOTE Synthetic Minority Oversampling
+    try:
+        from imblearn.over_sampling import SMOTE
+        print("Applying SMOTE oversampling to balance minority defect class ...")
+        smote = SMOTE(random_state=42)
+        X_train, y_train = smote.fit_resample(X_train_scaled, y_tr_raw if 'y_tr_raw' in locals() else y_train)
+        print(f"  Resampled train shape: {X_train.shape}, positive samples: {sum(y_train)}")
+    except Exception as smote_err:
+        print(f"SMOTE fallback to standard scaling ({smote_err})")
+        X_train = X_train_scaled
+
+    # 9. Train Calibrated Random Forest + HistGradientBoosting ensemble classifier
+    print("Training calibrated ensemble classifier ...")
     rf = RandomForestClassifier(
-        n_estimators=300,
-        max_depth=6,
-        min_samples_leaf=4,
+        n_estimators=350,
+        max_depth=8,
+        min_samples_leaf=2,
         class_weight="balanced",
         random_state=42,
         n_jobs=-1
