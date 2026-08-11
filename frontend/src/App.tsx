@@ -22,10 +22,32 @@ const NAV_ITEMS: { id: Tab; label: string; icon: React.ElementType; accent: stri
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('factory');
-  const [selectedFactory, setSelectedFactory] = useState<any>(null);
+  const [activeTab, setActiveTabState] = useState<Tab>(() => {
+    return (localStorage.getItem('frex_active_tab') as Tab) || 'factory';
+  });
+  const [selectedFactory, setSelectedFactoryState] = useState<any>(() => {
+    const stored = localStorage.getItem('frex_selected_factory');
+    if (stored) {
+      try { return JSON.parse(stored); } catch (_) {}
+    }
+    return null;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [ragDiagnosis, setRagDiagnosis] = useState<{ modelType: string; predictionData: any } | null>(null);
+
+  const setActiveTab = (tab: Tab) => {
+    setActiveTabState(tab);
+    localStorage.setItem('frex_active_tab', tab);
+  };
+
+  const setSelectedFactory = (factory: any) => {
+    setSelectedFactoryState(factory);
+    if (factory) {
+      localStorage.setItem('frex_selected_factory', JSON.stringify(factory));
+    } else {
+      localStorage.removeItem('frex_selected_factory');
+    }
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem('frex_user');
@@ -37,6 +59,8 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('frex_token');
     localStorage.removeItem('frex_user');
+    localStorage.removeItem('frex_active_tab');
+    localStorage.removeItem('frex_selected_factory');
     setUser(null);
     setSelectedFactory(null);
   };
