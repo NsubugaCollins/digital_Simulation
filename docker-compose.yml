@@ -42,8 +42,8 @@ services:
     volumes:
       # Persist trained model artefacts across restarts
       - simulation_models:/app/models
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8000/health || exit 1"]
       interval: 15s
@@ -72,7 +72,7 @@ services:
       db:
         condition: service_healthy
       simulation:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "8081:8081"
     healthcheck:
