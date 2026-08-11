@@ -11,11 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM base AS runtime
 WORKDIR /app
 
-# Download pre-trained models from Hugging Face
-RUN curl -L -o predictive_model.joblib https://huggingface.co/collo-123-coll/Ai4i2020_model/resolve/main/predictive_model.joblib && \
-    curl -L -o secom_model.joblib https://huggingface.co/collo-123-coll/secom_model/resolve/main/secom_model.joblib && \
-    curl -L -o cmapss_models.joblib https://huggingface.co/collo-123-coll/cmapss/resolve/main/cmapss_models.joblib
-
 # Non-root user
 RUN addgroup --system frex && adduser --system --ingroup frex frex
 RUN chown -R frex:frex /app

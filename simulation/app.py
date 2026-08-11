@@ -18,6 +18,25 @@ from rag_engine import rag_engine
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("frex-sim-service")
 
+import urllib.request
+
+HF_URLS = {
+    "predictive_model.joblib": "https://huggingface.co/collo-123-coll/Ai4i2020_model/resolve/main/predictive_model.joblib",
+    "cmapss_models.joblib": "https://huggingface.co/collo-123-coll/cmapss/resolve/main/cmapss_models.joblib",
+    "secom_model.joblib": "https://huggingface.co/collo-123-coll/secom_model/resolve/main/secom_model.joblib",
+}
+
+def ensure_model_exists(filename: str, local_path: str):
+    if not os.path.exists(local_path):
+        url = HF_URLS.get(filename)
+        if url:
+            try:
+                logger.info("Model file %s not found locally. Downloading from Hugging Face: %s...", filename, url)
+                urllib.request.urlretrieve(url, local_path)
+                logger.info("Finished downloading %s from Hugging Face.", filename)
+            except Exception as err:
+                logger.error("Failed to download model %s from Hugging Face: %s", filename, err)
+
 # ---------------------------------------------------------------------------
 # Predictive Maintenance Model Configuration
 # ---------------------------------------------------------------------------
@@ -31,6 +50,7 @@ def load_model():
     global model_package
     if model_package is not None:
         return model_package
+    ensure_model_exists("predictive_model.joblib", MODEL_PATH)
     if os.path.exists(MODEL_PATH):
         try:
             # Use mmap_mode='r' to prevent loading entire model into RAM at once
@@ -40,7 +60,7 @@ def load_model():
             logger.error("Failed to load predictive maintenance model: %s", e)
             model_package = None
     else:
-        logger.warning("Predictive maintenance model file not found at %s. Please run training first.", MODEL_PATH)
+        logger.warning("Predictive maintenance model file not found at %s.", MODEL_PATH)
         model_package = None
     return model_package
 
@@ -54,6 +74,7 @@ def load_cmapss_model():
     global cmapss_model_package
     if cmapss_model_package is not None:
         return cmapss_model_package
+    ensure_model_exists("cmapss_models.joblib", CMAPSS_MODEL_PATH)
     if os.path.exists(CMAPSS_MODEL_PATH):
         try:
             # Use mmap_mode='r' to prevent loading entire model into RAM at once
@@ -63,7 +84,7 @@ def load_cmapss_model():
             logger.error("Failed to load C-MAPSS RUL model: %s", e)
             cmapss_model_package = None
     else:
-        logger.warning("C-MAPSS RUL model file not found at %s. Please run C-MAPSS training first.", CMAPSS_MODEL_PATH)
+        logger.warning("C-MAPSS RUL model file not found at %s.", CMAPSS_MODEL_PATH)
         cmapss_model_package = None
     return cmapss_model_package
 
@@ -77,6 +98,7 @@ def load_secom_model():
     global secom_model_package
     if secom_model_package is not None:
         return secom_model_package
+    ensure_model_exists("secom_model.joblib", SECOM_MODEL_PATH)
     if os.path.exists(SECOM_MODEL_PATH):
         try:
             # Use mmap_mode='r' to prevent loading entire model into RAM at once
@@ -86,7 +108,7 @@ def load_secom_model():
             logger.error("Failed to load SECOM model: %s", e)
             secom_model_package = None
     else:
-        logger.warning("SECOM model file not found at %s. Please run SECOM training first.", SECOM_MODEL_PATH)
+        logger.warning("SECOM model file not found at %s.", SECOM_MODEL_PATH)
         secom_model_package = None
     return secom_model_package
 
